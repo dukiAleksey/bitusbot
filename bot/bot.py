@@ -85,13 +85,6 @@ async def link_handler(event):
                 'Enter link')
             conv.cancel()
 
-        # await bot.send_file(
-        #     event.chat_id,
-        #     f"{i['title']}-{i['display_id']}.mp3",
-        #     progress_callback=action.progress
-        #     )
-    
-
 def get_resource_data(url):
     ydl_opts = {
         'format': 'mp4'
