@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import config
+import glob
 
 # from pytube import YouTube
 
@@ -74,12 +75,14 @@ async def link_handler(event):
         if response.data in b'mp3 mp4':
             await conv.send_message('Downloading...')
             out_format = response.data.decode("utf-8") 
-            res = download_file(meta['webpage_url'], out_format)
+            resource = download_file(meta['webpage_url'], out_format)
+            file_path = glob.glob(f'res/{resource["id"]}.*')[0]
             async with bot.action(event.chat, 'document') as action:
                 await bot.send_file(
                     event.chat,
-                    res,
+                    file_path,
                     progress_callback=action.progress)
+                await os.remove(file_path)
         elif b'back' in response.data:
             await conv.send_message(
                 'Enter link')
@@ -87,42 +90,38 @@ async def link_handler(event):
 
 def get_resource_data(url):
     ydl_opts = {
-        'format': 'mp4'
+        'format': 'mp4',
+        'outtmpl': 'res/%(id)s.%(ext)s',
     }
-    info = dict()
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            i = ydl.extract_info(
-                url,
-                download=False
-                )
-            return i
+            return ydl.extract_info(url, download=False)
     except Exception as ex:
-        print(f'{ex}')
+        raise Exception(ex)
 
 
 def download_file(url, out_format):
     if out_format == 'mp4':
         ydl_opts = {
-            'format': 'mp4'
+            'format': 'mp4',
+            'outtmpl': 'res/%(id)s.%(ext)s',
         }
     elif out_format == 'mp3':
         ydl_opts = {
             'format': 'bestaudio/best',
-            # 'outtmpl': outtmpl,
+            'outtmpl': 'res/%(id)s.%(ext)s',
             'postprocessors': [{
                 'key': 'FFmpegExtractAudio',
                 'preferredcodec': 'mp3',
                 'preferredquality': '192',
             },
-                {'key': 'FFmpegMetadata'},
+            {'key': 'FFmpegMetadata'},
             ],
         }
     try:
         with youtube_dl.YoutubeDL(ydl_opts) as ydl:
-            i = ydl.extract_info(url)
-            filename = f"{i['title']}-{i['id']}.{out_format}"
-            return filename
+            i = ydl.extract_info(url, download=True)
+            return i
     except Exception as ex:
         print(f'{ex}')
 

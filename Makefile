@@ -1,2 +1,2 @@
 bot:
-    nohup python bot/bot.py >> bot.log &
+	nohup python bot/bitusbot.py >> bot.log &
