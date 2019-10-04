@@ -1,0 +1,12 @@
+.vscode/
+.DS_Store
+__pycache__/
+env/
+config.py
+test.py
+*.mp3
+*.mp4
+*.webm
+*.part
+*.session
+*.log
