@@ -53,7 +53,7 @@ async def link_handler(event):
 
         # =====  2  =====
 
-        meta = get_resource_data(event.message.raw_text)
+        meta = await get_resource_data(event.message.raw_text)
 
         await bot.send_file(
             event.chat_id,
@@ -73,22 +73,22 @@ async def link_handler(event):
         response = await conv.wait_event(events.CallbackQuery)
 
         if response.data in b'mp3 mp4':
-            await conv.send_message('Downloading...')
+            await conv.send_message('Downloading...', silent=True)
             out_format = response.data.decode("utf-8") 
-            resource = download_file(meta['webpage_url'], out_format)
+            resource = await  download_file(meta['webpage_url'], out_format)
             file_path = glob.glob(f'res/{resource["id"]}.*')[0]
             async with bot.action(event.chat, 'document') as action:
                 await bot.send_file(
                     event.chat,
                     file_path,
                     progress_callback=action.progress)
-                await os.remove(file_path)
+                os.remove(file_path)
         elif b'back' in response.data:
             await conv.send_message(
                 'Enter link')
             conv.cancel()
 
-def get_resource_data(url):
+async def get_resource_data(url):
     ydl_opts = {
         'format': 'mp4',
         'outtmpl': 'res/%(id)s.%(ext)s',
@@ -100,7 +100,7 @@ def get_resource_data(url):
         raise Exception(ex)
 
 
-def download_file(url, out_format):
+async def download_file(url, out_format):
     if out_format == 'mp4':
         ydl_opts = {
             'format': 'mp4',
