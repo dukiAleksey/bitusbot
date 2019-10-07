@@ -23,7 +23,7 @@ logging.basicConfig(
     filename='bot.log',
     filemode='a+',
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.WARNING)
+    level=logging.INFO)
 
 logger = logging.getLogger(__name__)
 
@@ -43,17 +43,12 @@ async def start(event):
 async def link_handler(event):
     async with bot.conversation(event.chat_id) as conv:
 
-        await conv.send_message(
-            'Searching...'
-        )
-    
-        # =====  1  =====
-        # vid = YouTube()
-        # title = vid.streams.first().download('uploads/')
-
-        # =====  2  =====
+        await conv.send_message('Searching...')
+        logger.info(f'search for: {event.message.raw_text}')
 
         meta = await get_resource_data(event.message.raw_text)
+
+
 
         await bot.send_file(
             event.chat_id,
@@ -73,17 +68,25 @@ async def link_handler(event):
         response = await conv.wait_event(events.CallbackQuery)
 
         if response.data in b'mp3 mp4':
-            await conv.send_message('Downloading...', silent=True)
-            out_format = response.data.decode("utf-8") 
-            resource = await  download_file(meta['webpage_url'], out_format)
-            file_path = glob.glob(f'res/{resource["id"]}.*')[0]
-            async with bot.action(event.chat, 'document') as action:
-                await bot.send_file(
-                    event.chat,
-                    file_path,
-                    progress_callback=action.progress)
-                os.remove(file_path)
+            try:
+                logger.info(f'response: {response.data}')
+                await conv.send_message('Downloading...', silent=True)
+                out_format = response.data.decode("utf-8") 
+                resource = await download_file(meta['webpage_url'], out_format)
+                file_path = glob.glob(f'res/{resource["id"]}.*')[0]
+                async with bot.action(event.chat, 'document') as action:
+                    await bot.send_file(
+                        event.chat,
+                        file_path,
+                        progress_callback=action.progress)
+                    logger.info(f'file has been sent: {file_path}')
+                    os.remove(file_path)
+                    logger.info(f'file has been removed: {file_path}')
+            except Exception as ex:
+                logger.warning(f'{ex}')
+                await conv.send_message('ERROR.\nSorry. Something went wrong')
         elif b'back' in response.data:
+            logger.info('back button clicked')
             await conv.send_message(
                 'Enter link')
             conv.cancel()

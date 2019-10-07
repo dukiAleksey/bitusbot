@@ -9,5 +9,5 @@ test.py
 *.mp4
 *.webm
 *.part
-*.session
+*.session*
 *.log
