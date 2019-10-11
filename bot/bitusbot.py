@@ -11,6 +11,7 @@ import glob
 
 
 import youtube_dl
+from sclib.asyncio import SoundcloudAPI, Track
 
 from telethon import Button
 from telethon import TelegramClient, events
@@ -39,7 +40,28 @@ async def start(event):
     pass
 
 
-@bot.on(events.NewMessage(incoming=True, pattern=r'^http'))
+@bot.on(events.NewMessage(incoming=True, pattern=r'^https://soundcloud.com/'))
+async def soundcloud_link_handler(event):
+    api = SoundcloudAPI()
+    track = await api.resolve(event.raw_text)
+
+    assert type(track) is Track
+
+    filename = f'{track.artist} - {track.title}.mp3'
+
+    with open(filename, 'wb+') as fp:
+        await track.write_mp3_to(fp)
+    
+    async with bot.action(event.chat, 'document') as action:
+        await bot.send_file(
+            event.chat,
+            filename,
+            progress_callback=action.progress)
+        logger.info(f'file has been sent: {filename}')
+        os.remove(filename)
+
+
+@bot.on(events.NewMessage(incoming=True, pattern=r'^https://you'))
 async def link_handler(event):
     async with bot.conversation(event.chat_id) as conv:
 
@@ -48,31 +70,30 @@ async def link_handler(event):
 
         meta = await get_resource_data(event.message.raw_text)
 
-
-
         await bot.send_file(
             event.chat_id,
             meta['thumbnail']
         )
 
-        select_format = await bot.send_message(
-                            event.chat_id,
-                            meta['title'],
-                            buttons=[
-                                [Button.inline('MP4', b'mp4'),
-                                Button.inline('MP3', b'mp3')],
-                                [Button.inline('Back', b'back')]
-                            ]
-                        )
+        await bot.send_message(
+            event.chat_id,
+            meta['title'],
+            buttons=[
+                [Button.inline('MP4', b'mp4'),
+                Button.inline('MP3', b'mp3')],
+                [Button.inline('Back', b'back')]
+            ]
+        )
 
         response = await conv.wait_event(events.CallbackQuery)
 
         if response.data in b'mp3 mp4':
             try:
                 logger.info(f'response: {response.data}')
-                await conv.send_message('Downloading...', silent=True)
+                status_msg = await conv.send_message('Downloading...', silent=True)
                 out_format = response.data.decode("utf-8") 
                 resource = await download_file(meta['webpage_url'], out_format)
+                status_msg = await conv.edit_message(status_msg, 'Uploading...')
                 file_path = glob.glob(f'res/{resource["id"]}.*')[0]
                 async with bot.action(event.chat, 'document') as action:
                     await bot.send_file(
