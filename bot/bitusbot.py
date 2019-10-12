@@ -33,11 +33,15 @@ NAME = TOKEN.split(':')[0]
 bot = TelegramClient(NAME, config.API_ID, config.API_HASH)
 
 # ==============================  Commands ==============================
-
+class Text:
+    m_start = 'Enter youtube or Soundcloud link here'
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start(event):
-    pass
+    await bot.send_message(
+        event.chat_id,
+        Text.m_start
+    )
 
 
 @bot.on(events.NewMessage(incoming=True, pattern=r'^https://soundcloud.com/'))
@@ -112,7 +116,7 @@ async def link_handler(event):
         elif b'back' in response.data:
             logger.info('back button clicked')
             await conv.send_message(
-                'Enter link')
+                Text.m_start)
             conv.cancel()
 
 async def get_resource_data(url):
