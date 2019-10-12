@@ -93,7 +93,10 @@ async def link_handler(event):
                 status_msg = await conv.send_message('Downloading...', silent=True)
                 out_format = response.data.decode("utf-8") 
                 resource = await download_file(meta['webpage_url'], out_format)
-                status_msg = await conv.edit_message(status_msg, 'Uploading...')
+                try:
+                    status_msg = await conv.edit_message(status_msg, 'Uploading...')
+                except Exception:
+                    pass
                 file_path = glob.glob(f'res/{resource["id"]}.*')[0]
                 async with bot.action(event.chat, 'document') as action:
                     await bot.send_file(
