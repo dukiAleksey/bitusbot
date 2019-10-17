@@ -43,7 +43,6 @@ async def start(event):
         Text.m_start
     )
 
-
 @bot.on(events.NewMessage(incoming=True, pattern=r'^https://soundcloud.com/'))
 async def soundcloud_link_handler(event):
     api = SoundcloudAPI()
@@ -65,21 +64,23 @@ async def soundcloud_link_handler(event):
         os.remove(filename)
 
 
-@bot.on(events.NewMessage(incoming=True, pattern=r'^https://you'))
+@bot.on(events.NewMessage(incoming=True, pattern=r'.*youtu.*'))
 async def link_handler(event):
     async with bot.conversation(event.chat_id) as conv:
 
-        await conv.send_message('Searching...')
+        msg_searching = await conv.send_message('Searching...')
         logger.info(f'search for: {event.message.raw_text}')
 
         meta = await get_resource_data(event.message.raw_text)
 
-        await bot.send_file(
+        await bot.delete_messages(event.chat_id, msg_searching.id)
+
+        msg_prew = await bot.send_file(
             event.chat_id,
             meta['thumbnail']
         )
 
-        await bot.send_message(
+        msg_suggesting = await bot.send_message(
             event.chat_id,
             meta['title'],
             buttons=[
@@ -94,6 +95,9 @@ async def link_handler(event):
         if response.data in b'mp3 mp4':
             try:
                 logger.info(f'response: {response.data}')
+                await bot.delete_messages(event.chat_id, msg_prew.id)
+                await bot.delete_messages(event.chat_id, msg_suggesting.id)
+
                 status_msg = await conv.send_message('Downloading...', silent=True)
                 out_format = response.data.decode("utf-8") 
                 resource = await download_file(meta['webpage_url'], out_format)
@@ -106,6 +110,7 @@ async def link_handler(event):
                     await bot.send_file(
                         event.chat,
                         file_path,
+                        caption=meta['title'],
                         progress_callback=action.progress)
                     logger.info(f'file has been sent: {file_path}')
                     os.remove(file_path)
@@ -115,6 +120,8 @@ async def link_handler(event):
                 await conv.send_message('ERROR.\nSorry. Something went wrong')
         elif b'back' in response.data:
             logger.info('back button clicked')
+            await bot.delete_messages(event.chat_id, msg_prew.id)
+            await bot.delete_messages(event.chat_id, msg_suggesting.id)
             await conv.send_message(
                 Text.m_start)
             conv.cancel()
