@@ -113,6 +113,7 @@ async def link_handler(event):
                         caption=meta['title'],
                         progress_callback=action.progress)
                     logger.info(f'file has been sent: {file_path}')
+                    await bot.delete_messages(event.chat_id, status_msg.id)
                     os.remove(file_path)
                     logger.info(f'file has been removed: {file_path}')
             except Exception as ex:
