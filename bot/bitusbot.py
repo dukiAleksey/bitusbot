@@ -5,6 +5,7 @@ import asyncio
 import logging
 import os
 import config
+import commands as cmd
 import glob
 
 # from pytube import YouTube
@@ -34,7 +35,7 @@ bot = TelegramClient(NAME, config.API_ID, config.API_HASH)
 
 # ==============================  Commands ==============================
 class Text:
-    m_start = 'Enter youtube or Soundcloud link here'
+    m_start = 'Enter Youtube or Soundcloud link here'
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start(event):
@@ -62,7 +63,6 @@ async def soundcloud_link_handler(event):
             progress_callback=action.progress)
         logger.info(f'file has been sent: {filename}')
         os.remove(filename)
-
 
 @bot.on(events.NewMessage(incoming=True, pattern=r'.*youtu.*'))
 async def link_handler(event):
@@ -138,7 +138,6 @@ async def get_resource_data(url):
     except Exception as ex:
         raise Exception(ex)
 
-
 async def download_file(url, out_format):
     if out_format == 'mp4':
         ydl_opts = {
@@ -163,6 +162,20 @@ async def download_file(url, out_format):
             return i
     except Exception as ex:
         print(f'{ex}')
+
+@bot.on(events.NewMessage(pattern='/getlogs'))
+async def get_logs_handler(event):
+    logger.info(f'{event.chat_id}: get_logs_handler')
+    try:
+        if cmd.is_admin(event.chat_id):
+            f = open('bot.log', 'rb')
+            await bot.send_file(
+                event.chat_id,
+                f
+            )
+    except Exception as ex:
+        logger.warning(ex, exc_info=True)
+
 
 
 # ==============================  Commands ==============================
