@@ -298,6 +298,21 @@ async def get_logs_handler(event):
         logger.warning(ex, exc_info=True)
 
 
+@bot.on(events.NewMessage(pattern='/getdb'))
+async def get_db_handler(event):
+    logger.info(f'{event.chat_id}: get_logs_handler')
+    try:
+        if cmd.is_admin(event.chat_id):
+            f = open(database_path, 'rb')
+            await bot.send_file(
+                event.chat_id,
+                f
+            )
+    except Exception as ex:
+        logger.warning(ex, exc_info=True)
+
+
+
 # ==============================  Bot ==============================
 
 
