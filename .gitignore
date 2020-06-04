@@ -5,6 +5,7 @@ env/
 res/
 config.py
 test.py
+*.sqlite
 *.mp3
 *.mp4
 *.webm

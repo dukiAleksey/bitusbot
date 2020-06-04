@@ -12,8 +12,8 @@ import glob
 import youtube_dl
 from sclib.asyncio import SoundcloudAPI, Track
 
-from sqlalchemy import (create_engine, func, Column, Integer, String, DateTime,
-                        Float)
+from sqlalchemy import (create_engine, inspect, func, Column, Integer, String,
+                        DateTime, Float)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -39,10 +39,38 @@ bot = TelegramClient(NAME, config.API_ID, config.API_HASH)
 
 # =================================  DB =================================
 
-# db = SQLAlchemy(app)
-engine = create_engine('sqlite:///' + config.DATABASE_FILE, echo=True)
+app_dir = op.realpath(os.path.dirname(__file__))
+database_path = op.join(app_dir, config.DATABASE_FILE)
 Base = declarative_base()
-Session = sessionmaker(bind=engine)
+
+
+class DB:
+    def __init__(self):
+        self.engine = create_engine('sqlite:///' + database_path, echo=True)
+        self.conn = self.engine.connect()
+        self.Session = sessionmaker(bind=self.engine)
+        self.session = self.Session()
+        self.build_sample_db()
+
+    def execute(self, command):
+        return self.conn.execute(command)
+
+    def exec(self, obj):
+        self.session.add(obj)
+        self.session.commit()
+
+    def add(self, obj):
+        self.exec(obj)
+
+    def build_sample_db(self):
+        # check table exists
+        if not inspect(self.engine).get_table_names():
+            Base = declarative_base()
+            Base.metadata.create_all(bind=self.engine, tables=(
+                User.__table__,
+                Order.__table__,
+                Invoice.__table__,
+                Operation.__table__))
 
 
 class User(Base):
@@ -55,7 +83,7 @@ class User(Base):
     last_name = Column(String, nullable=True)
     date = Column(DateTime(timezone=True), server_default=func.now())
     status = Column(String, nullable=True)
-    balance = Column(Float, nullable=True)
+    exp_date = Column(DateTime(), nullable=True)
 
     def __str__(self):
         return "{}, {}".format(self.user_id, self.username)
@@ -72,14 +100,7 @@ class Order(Base):
     date = Column(DateTime(timezone=True), server_default=func.now())
     link = Column(String)
     source = Column(String)
-    price = Column(Float)
-
-
-class Resource(Base):
-    __tablename__ = 'resources'
-
-    id = Column(Integer, primary_key=True)
-    res_link = Column(String)
+    filesize = Column(Integer)
 
 
 class Invoice(Base):
@@ -145,10 +166,24 @@ async def download_file(url, out_format):
         print(f'{ex}')
 
 
+def is_user_exists(user_id):
+    return db.session.query(User.user_id).filter_by(user_id=user_id).scalar()
+
+
 # ==============================  Bot ==============================
+
 
 @bot.on(events.NewMessage(pattern='/start'))
 async def start(event):
+
+    if not is_user_exists(event.chat.id):
+        db.add(
+            User(
+                user_id=event.chat.id,
+                username=event.chat.username,
+                first_name=event.chat.first_name,
+                last_name=event.chat.last_name))
+
     await bot.send_message(
         event.chat_id,
         Text.m_start
@@ -228,6 +263,12 @@ async def link_handler(event):
                         caption=meta['title'],
                         progress_callback=action.progress)
                     logger.info(f'file has been sent: {file_path}')
+                    db.add(Order(
+                        user_id=event.chat.id,
+                        link=resource.get('webpage_url'),
+                        source=resource.get('extractor'),
+                        filesize=os.path.getsize(file_path)
+                    ))
                     await bot.delete_messages(event.chat_id, status_msg.id)
                     os.remove(file_path)
                     logger.info(f'file has been removed: {file_path}')
@@ -258,29 +299,9 @@ async def get_logs_handler(event):
 
 
 # ==============================  Bot ==============================
-# ==============================  TEST =============================
-
-
-def build_sample_db():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-
-    session = Session()
-
-    admin_user = User()
-    session.add(admin_user)
-    session.commit()
-
-
-# ==============================  TEST =============================
 
 
 if __name__ == '__main__':
-    app_dir = op.realpath(os.path.dirname(__file__))
-    database_path = op.join(app_dir, config.DATABASE_FILE)
-    if not os.path.exists(database_path):
-        build_sample_db()
-        # add_products(product_list)
-
+    db = DB()
     bot.start(bot_token=TOKEN)
     bot.run_until_disconnected()
