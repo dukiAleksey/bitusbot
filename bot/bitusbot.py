@@ -170,6 +170,11 @@ def is_user_exists(user_id):
     return db.session.query(User.user_id).filter_by(user_id=user_id).scalar()
 
 
+def clear_resources():
+    files = glob.glob('res/*')
+    for f in files:
+        os.remove(f)
+
 # ==============================  Bot ==============================
 
 
@@ -311,6 +316,15 @@ async def get_db_handler(event):
     except Exception as ex:
         logger.warning(ex, exc_info=True)
 
+
+@bot.on(events.NewMessage(pattern='/clear'))
+async def clear_hadler(event):
+    logger.info(f'{event.chat_id}: clear_handler')
+    try:
+        if cmd.is_admin(event.chat_id):
+            clear_resources()
+    except Exception as ex:
+        logger.warning(ex, exc_info=True)
 
 
 # ==============================  Bot ==============================
