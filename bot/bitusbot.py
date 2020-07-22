@@ -10,10 +10,11 @@ import glob
 
 
 import youtube_dl
+from datetime import datetime, timedelta
 from sclib.asyncio import SoundcloudAPI, Track
 
 from sqlalchemy import (create_engine, inspect, func, Column, Integer, String,
-                        DateTime, Float)
+                        DateTime, Float, and_)
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
@@ -166,8 +167,39 @@ async def download_file(url, out_format):
         print(f'{ex}')
 
 
-def is_user_exists(user_id):
+def is_user_exists(user_id: int) -> bool:
     return db.session.query(User.user_id).filter_by(user_id=user_id).scalar()
+
+
+def is_able_to_download(user_id: int, filesize: int = 0) -> bool:
+    """
+    user able to download if:
+    - less then 2 resources last 24 hours
+    - filesize less then 200 mb
+    """
+
+    if cmd.is_admin(user_id):
+        return True
+
+    # filesize managing
+
+    try:
+        if filesize > config.QUOTA_SIZE:
+            return False
+    except TypeError:
+        return False
+
+    # quontity managing
+
+    last_day = datetime.now() - timedelta(hours=24)
+    recent_num = db.session.query(Order) \
+        .filter(
+            and_(
+                Order.date.between(last_day, datetime.now()),
+                Order.user_id == user_id)) \
+        .count()
+
+    return False if recent_num >= config.QUOTA_NUM else True
 
 
 def clear_resources():
@@ -227,6 +259,11 @@ async def link_handler(event):
 
         await bot.delete_messages(event.chat_id, msg_searching.id)
 
+        if not is_able_to_download(event.chat_id, meta['filesize']):
+            await conv.send_message("You're out of download qouta")
+            conv.cancel()
+            return False
+
         msg_prew = await bot.send_file(
             event.chat_id,
             meta['thumbnail']
@@ -256,7 +293,7 @@ async def link_handler(event):
                 out_format = response.data.decode("utf-8")
                 resource = await download_file(meta['webpage_url'], out_format)
                 try:
-                    status_msg = await conv.edit_message(
+                    status_msg = await bot.edit_message(
                         status_msg, 'Uploading...')
                 except Exception:
                     pass
