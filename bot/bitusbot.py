@@ -268,7 +268,7 @@ async def link_handler(event):
 
         msg_prew = await bot.send_file(
             event.chat_id,
-            meta['thumbnail']
+            meta['thumbnail'].split('?')[0]
         )
 
         msg_suggesting = await bot.send_message(
