@@ -180,6 +180,8 @@ def is_able_to_download(user_id: int, filesize: int = 0) -> bool:
 
     if cmd.is_admin(user_id):
         return True
+    elif cmd.is_friend(user_id):
+        return True
 
     # filesize managing
 
