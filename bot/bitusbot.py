@@ -261,7 +261,7 @@ async def link_handler(event):
 
         await bot.delete_messages(event.chat_id, msg_searching.id)
 
-        if not is_able_to_download(event.chat_id, meta['filesize']):
+        if not is_able_to_download(event.chat_id, meta.get('filesize', 0)):
             await conv.send_message("You're out of download qouta")
             conv.cancel()
             return False
