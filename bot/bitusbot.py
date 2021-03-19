@@ -266,10 +266,13 @@ async def link_handler(event):
             conv.cancel()
             return False
 
-        msg_prew = await bot.send_file(
-            event.chat_id,
-            meta['thumbnail'].split('?')[0]
-        )
+        try:
+            msg_prew = await bot.send_file(
+                event.chat_id,
+                meta['thumbnail'].split('?')[0]
+            )
+        except Exception:
+            msg_prew = None
 
         msg_suggesting = await bot.send_message(
             event.chat_id,
@@ -286,7 +289,8 @@ async def link_handler(event):
         if response.data in b'mp3 mp4':
             try:
                 logger.info(f'response: {response.data}')
-                await bot.delete_messages(event.chat_id, msg_prew.id)
+                if msg_prew:
+                    await bot.delete_messages(event.chat_id, msg_prew.id)
                 await bot.delete_messages(event.chat_id, msg_suggesting.id)
 
                 status_msg = await conv.send_message(
