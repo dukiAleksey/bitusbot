@@ -255,7 +255,8 @@ async def link_handler(event):
     async with bot.conversation(event.chat_id) as conv:
 
         msg_searching = await conv.send_message('Searching...')
-        logger.info(f'search for: {event.message.raw_text}')
+        logger.info(
+            f'user_id:{event.chat_id}. search for: {event.message.raw_text}')
 
         meta = await get_resource_data(event.message.raw_text)
 
