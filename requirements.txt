@@ -11,7 +11,7 @@ idna==2.8
 mccabe==0.6.1
 multidict==4.5.2
 mutagen==1.42.0
-numpy==1.18.4
+numpy==1.22.0
 pyaes==1.6.1
 pyasn1==0.4.7
 pycodestyle==2.5.0
